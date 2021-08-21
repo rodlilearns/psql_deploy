@@ -1,0 +1,3 @@
+---
+trusted_ips: '*'
+psql_repo_url: https://download.postgresql.org/pub/repos/yum/reporpms/F-34-x86_64/pgdg-fedora-repo-latest.noarch.rpm

@@ -1,0 +1,71 @@
+---
+- name: Deploy a psql database on Fedora 34
+  hosts: databases
+  vars_files:
+    - host_vars/psql_vars.yml
+
+  tasks:
+    
+    - name: Enable the system provided module for PostgreSQL 13
+      ansible.builtin.command: dnf module reset postgresql
+      become: yes
+
+    - ansible.builtin.command: 'dnf module enable postgresql:13'
+      become: yes
+
+    - name: Install PostgreSQL 13 and other useful packages
+      ansible.builtin.dnf:
+        name:
+          - postgresql-server
+          - postgresql
+          - vim
+          - bash-completion
+          - wget
+          - firewalld
+      become: yes
+
+    - name: Update System
+      ansible.builtin.command: dnf update -y
+      become: yes
+
+    - name: Add the PostgreSQL Yum Repository
+      ansible.builtin.command: dnf install -y "{{ psql_repo_url }}"
+      become: yes
+
+    - name: Install PostgreSQL 13
+      ansible.builtin.dnf:
+        name:
+          - postgresql13-server
+          - postgresql13
+      become: yes
+
+    - name: Initialize PostgreSQL database
+      ansible.builtin.command: /usr/pgsql-13/bin/postgresql-13-setup initdb
+
+    - name: Start and Enable PostgreSQL database
+      ansible.builtin.service:
+        name: postgresql-13
+        state: started
+        enabled: yes
+      become: yes
+    
+    - name: Enable remote access to postgresql
+      ansible.posix.firewalld:
+        service: postgresql
+        permanent: yes
+        state: enabled
+      
+    - name: Edit the config file for PostgreSQL Database
+      ansible.builtin.lineinfile:
+        path: /var/lib/pgsql/13/data/postgresql.conf
+        regex: "^listen_addresses = "
+        line: listen_addresses = "{{ trusted_ips }}"
+      become: yes
+      notify:
+        - Restart database
+
+  handlers:
+    - name: Restart database
+      ansible.builtin.service:
+        name: postgresql-13
+        state: restarted
